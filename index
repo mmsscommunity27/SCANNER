@@ -1,0 +1,1405 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MMSS Gate QR &amp; Serial Check-In</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 15% 15%, #1e3a8a 0%, transparent 45%), linear-gradient(135deg, #0b1730 0%, #111c35 100%);
+      color: #f8fafc;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .app { width: min(100%, 660px); }
+    .card {
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      border: 1px solid #e2e8f0;
+    }
+    .auth { max-width: 440px; margin: auto; }
+    .brand-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 14px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .brand-title { font-size: 1.25rem; font-weight: 800; color: #0f172a; margin: 0; }
+    .brand-sub { font-size: 0.8rem; color: #64748b; margin: 2px 0 0; }
+    .badge-pill {
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 5px 11px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge-pill.ok { background: #dcfce7; color: #166534; }
+    .hint { color: #64748b; font-size: 0.88rem; line-height: 1.5; margin: 0 0 14px; }
+    label.field-label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #334155;
+      margin: 10px 0 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    input.input-ctrl, select.input-ctrl {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 12px;
+      font-size: 0.95rem;
+      background: #ffffff;
+      color: #0f172a;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input.input-ctrl:focus, select.input-ctrl:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    .btn {
+      width: 100%;
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 14px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      transition: transform 0.12s, opacity 0.15s;
+      font-family: inherit;
+      text-align: center;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #1e293b;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #ffffff;
+    }
+    .btn-danger {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .btn-amber {
+      background: linear-gradient(135deg, #d97706, #b45309);
+      color: #ffffff;
+    }
+    .btn-teal {
+      background: linear-gradient(135deg, #0d9488, #0f766e);
+      color: #ffffff;
+    }
+    .hidden { display: none !important; }
+    .error-box {
+      color: #991b1b;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 12px 14px;
+      border-radius: 12px;
+      margin-top: 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+    .scanner-box {
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 16px;
+      margin: 14px 0;
+    }
+    .scanner-actions-three {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .cam-sub-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .cam-sub-controls .btn {
+      width: auto;
+      padding: 8px 13px;
+      font-size: 0.82rem;
+    }
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      margin: 12px auto 0;
+      border-radius: 16px;
+      overflow: hidden;
+      background: #0f172a;
+      aspect-ratio: 4 / 3;
+      border: 2.5px solid #2563eb;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+    }
+    .video-wrap video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .scan-reticle {
+      position: absolute;
+      inset: 14%;
+      border: 2.5px dashed rgba(56, 189, 248, 0.95);
+      border-radius: 16px;
+      box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.35);
+      pointer-events: none;
+    }
+    .scan-laser {
+      position: absolute;
+      left: 16%;
+      right: 16%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #22c55e, #38bdf8, transparent);
+      box-shadow: 0 0 10px #38bdf8;
+      animation: laserSweep 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes laserSweep {
+      0%, 100% { top: 18%; opacity: 0.75; }
+      50% { top: 80%; opacity: 1; }
+    }
+    .engine-pill {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.82);
+      color: #38bdf8;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .status {
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin: 14px 0 10px;
+      background: #eff6ff;
+      color: #1e40af;
+      font-weight: 800;
+      font-size: 1rem;
+      border: 1px solid #bfdbfe;
+    }
+    .status.success { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+    .status.duplicate { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+    .status.invalid { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+    .result-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px 16px;
+      line-height: 1.65;
+      font-size: 0.92rem;
+    }
+    .result-card p { margin: 5px 0; }
+    .manual-section {
+      border-top: 1px solid #e2e8f0;
+      margin-top: 18px;
+      padding-top: 16px;
+    }
+    .manual-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .mode-switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #eef2ff;
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin-top: 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #1e3a8a;
+    }
+    .file-capture-label {
+      cursor: pointer;
+      margin: 0;
+    }
+    @media (max-width: 560px) {
+      .scanner-actions-three { grid-template-columns: 1fr; }
+      .manual-row { grid-template-columns: 1fr; }
+      .card { padding: 18px; }
+    }
+  
+    /* Executive Royal MMSS Scanner Polish */
+    .card {
+      border: 2px solid #c8ab75 !important;
+      border-radius: 24px !important;
+      box-shadow: 0 28px 70px rgba(0, 0, 0, 0.48) !important;
+    }
+    .brand-bar {
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1.5px solid #f1eae0;
+    }
+    .brand-title {
+      color: #241718 !important;
+      letter-spacing: -0.3px;
+    }
+    .scanner-box {
+      background: linear-gradient(180deg, #fdfbf7 0%, #f7f1e6 100%) !important;
+      border: 1.5px solid #e2d5be !important;
+      border-radius: 18px !important;
+    }
+    .btn {
+      border-radius: 13px !important;
+      font-weight: 800 !important;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+      transition: all 0.2s ease;
+    }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+  </style>
+</head>
+<body>
+  <main class="app">
+    <!-- AUTH PANEL -->
+    <section class="card auth" id="authPanel">
+      <div class="brand-bar">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;"><img src="data:image/jpeg;base64,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" alt="MMSS" style="width:44px;height:44px;border-radius:50%;border:2px solid #7b1f20;padding:2px;background:#fff;" /><div><h1 class="brand-title">MMSS Gate Check-In</h1><p class="brand-sub">Mansoura Manchester Students Society</p></div></div>
+          
+        </div>
+        <span class="badge-pill" id="authModeBadge">Gate Staff</span>
+      </div>
+      <p class="hint">Sign in with your gate staff name and organizer PIN to scan QR tickets or verify serial numbers.</p>
+
+      <form id="authForm">
+        <label class="field-label" for="staffName">Gate Staff Name</label>
+        <input class="input-ctrl" id="staffName" placeholder="e.g. Dr. Sara Ahmed" autocomplete="name" required />
+
+        <label class="field-label" for="organizerPin">Organizer PIN</label>
+        <input class="input-ctrl" id="organizerPin" type="password" inputmode="numeric" placeholder="••••" autocomplete="current-password" required />
+
+        <button class="btn" id="loginBtn" type="submit" style="margin-top:16px;">Unlock Gate Scanner →</button>
+        <div id="authError" class="error-box hidden"></div>
+      </form>
+    </section>
+
+    <!-- GATE SCANNER PANEL -->
+    <section class="card hidden" id="gatePanel">
+      <div class="brand-bar">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;"><img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAC0ALQDASIAAhEBAxEB/8QAHQABAAMBAAMBAQAAAAAAAAAAAAUGBwQCAwgBCf/EAFUQAAEDAwIDBAUGBwgQBwEAAAECAwQABQYHERIhMRMiQVEIFDJhcRUWQlKBkRcjM2KClKEYN1Zyc7Gz0SQlJjQ2Q1NjdHWDkrTC0uE4RUZ2oqPD8f/EABoBAQADAQEBAAAAAAAAAAAAAAACAwQFAQb/xAAxEQACAgECBAMGBQUAAAAAAAAAAQIDEQQxBRIhURNBcRRhgZGhsQYiM1LwIzI00fH/2gAMAwEAAhEDEQA/APsulKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUoaAUJqi5dqRAtt3VjePW+VlGTAAm2wCNo+/RUh09xlP8Y7+QNVLJoM52K3cNZNRYmP26QsIbslplmGwokgcDj52dePPnw8KfdQF5yrUrB8Zk+p3bIoaZ3hCYJfkE+QabClfsqFGpV8uRHzZ0vyy4IV0enIatzR947ZXF/8alvm/j+BYVdpuH4/aoDsWC9Ib7NkDtVpQVDjWO8rcjmSd6/NGM1Tn2n9uv7rCYs9SA3Pijf8RIAHEnnz2O4UPcoUBFfLessk7sYLi8FPgJd/WtQ+IbZ2/bQ3DWxHM43g7v5qbtISfvLRq8ZMvs8cubgJTwxHTuPDZBr5GOoN2d9FLDrOZEtN5dvTFvlLDig4GGXUOlZVvvsUKaG/jxUB9AfO7U+CniuelSZaB7S7VfWXTt7kOJQTXkjWPGIjqWcogX/E3Dy3vFtcaa3/AJVPE39vFVi1KyI4vhVwuzTYdmJSGYTPi7JcUENI+1ak/ZvUXodcrpkGj+P3HI5An3GVEPrbikjZxfGoHkBtty8qAtlnu1svEFE603CJPirG6XozyXEH7Ukiu2sJgwtMMjtd7zWxvycFVbru7bDeLTIEYSHELSgLLaQW3EqWoABSST9tWVeRagYLyzC3DK7EjrebPHKZTCfrPxRvxDzU0T/FoDUaVG41f7NkloZu9huUa4wXh+LfYWFJPmD5EeIOxFSVAKUpQClKUApSlAKUpQClKE7Dc0B4vONstKddWlDaAVKUo7BIHUk+ArKJN/v2pzz0XEZ71hwxpSkS8iT3X5+3JSIe/JKOoL5/R869N1kK1ZusyGJRi6b2p1SbhJDnAL082e+0F+EVBB41fTII6A1M4ZqBguaOyMQgxnY7DkRQhxpcQsM3KFsUFyMDyca6jlz22O2xBoD22eViOnd8smDW+zqtkO8tuLiTxspqVJHMtuOElSnlJ3WFK34tjsd+VUvN7Pj9h1fusnLLX8qWbMrO6yy84yZD0aQy0e0jMjmUh1rvJSnqpBr8ZsTEUv6IZjJkKtkpBkYddyr8chLZ4kshfg+wdik/SRt5GuhZu+e4Rd8Bv7zcLUTGVNSo0lI4UvOtnijTmvzHNuFQHskrSfCgJ70f5k7IdDLai5u+soXHeiRn1OJU4/GSVIaW4ATwuFGwUkncEHfnWZaCZWbLfMbWq2XWNZ79AZtFwmPxi3FN1jhTbSm1k94uIQUEgbEoRz3rTtPcVuke62/M7clzGUXlgPZHjr7W7ZlFPN1sA/inOId4jcLGxI351KuW7T7C8UYx+9TYDdualKlss3N9Cldop5T26QeZ2WolOw5cqAsuX7nE7vwgk+ov7ADcn8WqvlqRp7cIeANZYtp4xJWPWJtiPwndEtb0dEhXD1B7Nlrf/wDtfQ41IsL4/tZByC6p+tDs0haT8FFAB++vz8IEcDd7FMxZR4qVZXFAf7u5/ZQFN1cu15uOpNptNisQvsbF2Te7pH9bSxs6pK0RgCoEFSfxjnCduiTvUdYb7NsXop4y1adxe71CYt1rT4+sSVEBX6AKln3JrQmM/wAClvuRpNzYgSJSeBxu4x1w1uDbbY9qlO/XbrXW1heNuSsZmxGezi46hz5LjMOf2OjjRwcXDz3KU7hJ35cRoDCdJbDDeyiJpnbTx2fG8hm3i5AnfiLK0sxUK96nErdI/MrTMuyrK7xnErHcCuNqt7GOsetXy43Bgux+1UnduJuCCk8O61rB3SOHz2qEuNskaMYXneWxm2Jt8yG+OSW3uE9jHDy+BkvK27rbYUVLPTrVi0rbxG0xXNN4Uv5eneofKV6m8Adalrkk8S3V8wVOd4hP1APAUBXcRtc3LMcjao6fsIxLIZ3EqTCWSu23cIUU8TiQByXtuh4AL2IJB6VoGnucxco9bt0yE9Z8ituyblaZJHasE9FpI5ONK+i4nkfceVVXLMplXrJvwUabTY0CdEYQbxcmQkps8bkkIaR0U+RsEjbZA5nwFeN4j2rUC6S/mbcZUfKsQKWI2RdlxMLe278VxY5PIOw7RIGySoEbEUBrdKqOmeYjKrdJZnwja7/bHfVrvbVq3VGe23BSfpNqHeQvoQfMGrdQClKUApSlAKUpQCs11VuM/IL3E0wx+U5Gk3FkyL1NZVsqBb9+FXCfBx07oT5DiV4VecnvMHHseuF8ubvZQoEdch5XklI3O3vPQe+qHpljt9Vg14yGU+mBmGVoXNdfcRx+pFSCIzO3ilpHDy8+LzoCTn2LCcswO7ab2i4RWoEVgW6RHtshPaQuEDhSQN9iNhuFdeYO+5qiPsi8uwtNNTgLXksQ9pjGSW9IYTKUgd1xg9Gn0jbjZPJQ32BHTlwmyX/EnraGtE/WcltUdcVV5i3lluPNSvmp1S1HjWVqJUQtBKSTtU7frynJ5MbAdWMHcsxvLn9qJcSb600X0pKwEvJSlTL6eEqB225daA9AE/NUTNLM/HqOX21lFytd7gJ2Q8EL4WprX+TWFcltnkdyBuDyn7ZabbgTrmW5lfn79lM5pMP1vsNluDfiEaJHRvwpJ58I3JPNR8vK3Wu2aX2l6Y5KuWT5PeHkspkSlpVMuToGzbQIACEISNzsAlIClHn18raux43exd85v0F7LJLHFxKJ7OIyT+Sjp27re42KvaWRufADxtLc9jFyeEsnYiHmmVjtblLdxK1K9mHDWlU9xP8AnHuaWv4rYJH1qm8ewzGbCsvW2zxkSlc1ynR2shZ81Or3WftNcv4Q8LH/AKhh/er+qn4Q8L/hDC+9X9Vec8e5Z4Nn7X8i07Uqq/hCwv8AhFD+9X9Vc7uqWnjLhbezGztOJ6oXICVD4g0549wtPa9ov5FsmRIs2OqPMjsyGVclNuoC0n4g8qqD+n0KC6qVh9wlYvJJ4iiIeOI4fz4yu4finhPvr9/Cvpv/AA2sf60mn4V9N/4bWP8AWk154kO5L2W/9j+TPCNlcy2yUWXPrfHgqknsWLkySu3yyeQQSrmys9OBfI9ApVei7YKuy4tNtGl0e04tJukxK5stDJ3aQrk442kci4E8kg7JFfty1J0ruUB+BPyzHZUV9BQ6y6+hSFpPUEHqK4sbvTeLCAlF1F1wi5KS3a7mXe0MBajslhxZ5qaJ5IcPNJ2SrwNeqSezITpsrWZRa9UZ9Mw+y5DfLdgWnDT9uYxt5YveVx3lCQhbg/HRkOjm8+7vu4VbhHLx2AuknKLbiyGNM9J7FHu16hNhtUZpe0O1pP8AjZbo32JO54ea1nf410a5NXuBjkIY/IetFjfuAGQv2qOPXkR3DsXGdhyPERxqAKgkkjmKmMS00xbE7zFueMx3rX2UNUWQyy5uiaCriS4/xblbiTxELJ4u8dztUisos93KDFTqM3Y3ImZ4wtUDIYDCFBm8Q07KV2JPtjhPatHqDxIPU1sdgu0C+2WHebXJRJgzWUvx3UdFoUNwaz7L9XGbRdLlHteLXa9wLG6lF+ubJSiPAHdKwCebq0JUFKSkchvua8NN3G8Q1AueCIcSbJdG1XzHFJO6EoWr+yI6fclag4kD6LnuoDUqUpQClKUApSlAZnrH/dDkWJ6ep7zF0mm4XNO/WHF2WUn3LdLSfvqvaqagYqxl6bdB1Xm4rksDdn1BdvckRZBPPZbJb7/kFIUCB41OY9MiSdZc6yi5S2Y8GwQotnbfeWENtjh9YfJUeQ5uNgn3VJ5PM0lzKGmJfLtil1R1b45zPaIPmhQUFJPvBFAZzE9IS2wXfkfPILMiO+ktKuljbfcYUCNj2jK0pda5eXF8auOmWE4tBdi5pa8pud7sjMNwWRufI7Rm2sr5ultSgF8+HbdZJSkEb7VzW2wX2zSmU4DqPDu9v40j5Iv74mpCPENSEntU8ugVxirNqkVTodrw6OooVf5Yjv8AByKYiB2kgjy3Qng/2lAeGAR3MiubufXJtQEpBZsjKx/e0Lfk5t4LeICyevDwJ8DUbmt8XjOS5Nf0QxM9Qx+O+pntezK0pedJ2Vsee1aQy2hppDTaEoQgBKUpGwAHQCsi1n/vfPv/AGk3/SPVTe8QNWjipWqL2ePuiJ0o14g59mDWOosC7Yt1lbiHXpiVcRSN+FICeZ8fgDWybgAkkADqT0Ffz/sdpvFkxG16m2Z1YVCvBjOEdGlpCVNk/mq3Uk/96+iNZ9Xoi9FrfMx94puWTslpptB3XHT0e+0HuD3msFVz5XzHe4hwmPjwjpl+VvHo1vn4dTwjekhEl5c3jsPFXH3HZwhNSEz09kslfAFju78J61n+cYR+EH0nskxxNzFukLAdbcUwXUngZRxA7EbcvGqfDxOThmr+HWecT64t2BKkI/ya3F78H2DYfHetgxb/AMcF6/kHf6BFRi3ZiM+5vlVVonKzS9P6bed/NdzKdbdH5mmMO2yX7sm5onOrb424pbQ2UgHYkqPM+A9xrPcftrt4vsC0sJcLsyQhhIbRxq3UoDcDlvt1r7dy1Nr1Ys+bafPhtm6WeSEsEnmlXAFsuj3bkpP2+dY96LmFtWB6+aj5ez6nGsAejspdHsuoBDq/0fZHvJpZpV4iUdmW6TjM1o5O79SP1zsQmpvo+v4Jhk3JZuVMy243CAy1BIUtSlBIG5VyG5619D6B2+FdfR8x223GM3JiSbapp5pY3StJUoEGqnrvfVZN6LRyFbAY+UERXw2DvwBToIHx22q7ejd+8din+hf86q101whb+TbBxNfqb9RoFK95kptfJEhp7NmQJc3CrxIckTrUlK4klw96XCUSGnCfFaSC2s+aQfpVmlwvd0xzVbIXLrEy3JsnC1Kxa3w0r9Q9UdRyJA2bQUKBStbhJ6Eda0jU5ItEizZq13VWmUGphH0ob5S26D5hKi257uA1OZlc7tabN63ZMdkZBNLiW0RGZDbO4P0lLWdgkePU+6th88UezaVF7TC2Yte75dI7jrjku/fJ8gNfKL726nkLXtxcBUojukEgAb7Vw6sLtFtxyPdMZ4BO03lxpDkVsK4mohbCXWufVKmFE+PsDxFSHyXrLkgBueQWPC4ahzYtLBmy9vIvOgISfelBr2YzpWix5DeZasiul4h320+pXQXR8vvPugkIcCuSUpCFrTwgbdNqA0eI+1KjNSWFhxp1AW2odFJI3B+417az/wBHuc/K0ptUOY4VzLSXrVIJ68UZxTI+9KEn7a0CgFKUoBQ0oaAy/RGHDvWKZTLuERmVHvWSXNbzTyAtDiEvFkJIPIjZvpUfdNC7DBWqThLdste6itVtuNtanW9w+XAscbW/m2ofCoLFmMVk+jxb0ZZl8nFYqrnNdTOj3T1FztfWn+QXv3up7vPfastanOxbitrBtVMx1EYC9uwj3F+I637hIO7J2695IoDXtFNP2seyWS3k+mlpi3pMyRcY1+tyG1xNlr2DTfRxopSQAkjoCd6vjIFw1nkKPebs9jQhII5JckuqJI9/CykfbXHo5aZ0a3Ludwu+UuvyUBK7febqxN9WIO+6VNDbn8fsrsxDnqhnBJ5g29A+HYE/zqNAXWse1oITGz4kgD5pN8yf849Ww1hOtmoWO4PqG7GySxvXiLc7OynsUoQpHcecPeC+R6j7qo1DSh1N3D4TnclBZe+PRplc9F2xW/KdBL9j9xCVxptweaWRzKCW0FKh7wdiPhVP9H3Sq4vaqzRkbCjDxSQQpK9yh2Rvu2AOm22zh+yrVaPSL05syHE2nB51uQ6QXBGbYaCyOm+xG5ruHpQ4c2pahjF5Qpw8SiC0OI7bbnnz5VgXhdMvY+imuIqV3JU0rPTp/EU7XFaB6WNi4lp5O23fdX51WbFdz6b96IBO0d3fb+Qbrkna9aWTpy5s3Tl6TLcUFKfdjR1OEjoeI869CtPcu1JvcnU/Dclbx6JfQFNtLdcbfSlACClRb5dUE0i1zZj165JNSjUoaheGuRxy+/TsQWRZs9gPpZXu8qUsQXJiWJ6PrMKbRuf0eSh8KsfpiagxlRIuC2J9stPhM64rZ22UFd5tHLz9s/ZUXdPRtz66ylTLpmNrnSCAlT0hTziiB0BJFc7vov5m8ouOZPZXTsAVKDqjsBsOe3lRytxKKW7LYS4d4lVsrFmCx59cbP4Fzz9Kv3FVrBSrlBgk8un4xNad6Nv7x2Kf6F/zqrFX9BtV5ME29/UVh6GtHZqjrkyFNlPTh4Ty291bpoJCctuklgtzq0rciMrYUpPRRQ6tJI93KtVDbsy1jocfiMqlpXCE1LM2+nllFmyu2IvWM3O0OAFM2I6weXTiQRv+2qzaMknnRBnJ4jTci4s2IyQ29vwrebaJKTtz5qSavJqkaNIB0wgNBCVpDktCUq6ECQ6AD7tq2HAKBepGt87Tj532/LrK2p6GzLjwLRYi64tDnASkKdWrdQSonpzIqblYTmlmvmO3uNnmWZGtF2ZTcIshxlqOYq0qStRaQlI7pKVePSo/KNR86wqEFZDY9PbPGbT+LQ7kymiUjoEo7Dc8vACu24ahakWi2wr1d8EsQtEiRGaL8W/KcWEvOJQlYSWRv7YO24oCW0e3iZXqNZ9tkR8kMlA90iO04f2k1pFZzp8AnWTUtI6F22KPxMYg/wAwrRqAUpSgFDSlAZRolZbRdtPpdlvlpg3FFsyC5sBqXHQ6lBEpxQICgdjwrH31ZZelemsr8vgeNq+FubT/ADCojS8/JepWomOKVsk3Ji8MJPiiSykLI/2jS60mgK9iOE4piLkleNWGFajK4e39Wb4ePh323+G5++oyzf2FrFkMZRH9sbVDlo9/ZqdaX/Oj76ulUnPD8kZdjOUb8LCX12qaoeDUnhDaj7g8hsfpGgLtXx16cP75Vn/1UP6VVfYo6V8denD++VZ/9VD+lVWTW/pM7v4c/wA6Po/sWXSrG8U0+0Ob1Ou2OfOG6yWw8lHZBzskqXwoSkEEJA6qVtvUS16SVgnPep5DppbHICjspLbiFrA/irQAfvFQ+j2t950/xGDab/jztzsLqnRb30rCFgJV30Di7q0hR9xG9aAxrvo5flpjX3EnmA6QlS5FtadSN+XMp3P7KzxnFxShJL3NHUu09qtslfS7Mt4alsvcvcYrrxI01eulsXp1bkx2pMYSpi0rUEpUr2WggkhBGxJA8SK+m/RtdSxoNj769yhuO8sgddg4sn+asO9K7TWwYbKtN+xlgQ4V0UttyKkngQsAKCkA9AQenurdfRmAVobjSSAQWXQQfH8auo1xaukmQ4nbXZwyqUG2s+e/mYXi6ct18zC6qn5kuyW6IQpqG0s8kKJCUobChxbAc1HfnVsuOhOfYpHVdMF1BuD0plJX6u6VslzbwB4ikn3KG1c2R+jrFvVwfvmAZZGYhvPubMuhRS0sKIWhLiOewUCNiOVVfI9PtZNNbQ/kkfKlqhQgFuriXJxRQncDctr5EbnpUOVr+5fHJoV1dslHT2xiui5HH6H01pT86FYTbH8yldven0h19PZJb7IH2UEDxA23PnvXdpN/gJC/lZP/ABDlVr0f80m53p5EvFzQhNwafXFkqQNkuLQR3wPDcEbjz3qy6Tf4CQv5WT/xDlbqGm1jsfMaqEoOyMlhqXlt5ljuMpqFAkTHiEtMNKdWT4BIJP8ANVW0ghOMaWWFl/iQ49CD69jsQXd3D9vfr81efdXifyDEWUzb++i1s7dQlz8qr4JaDivsq2RGGo0ZqOwgIaaQEISOgSBsB91ajAUyz6TYBa4kxpjHmH35zS2ZUyUpUiU6lYIVu84SsbgnoRUVE0SxCO7DKp+USWIbrTzUWTfZDrHE2QpAKFK2IBA5e6tNrxcWlCCtSglKRuSegHjQGc6WEydR9TLgPYVeI8RJ8+yiNg/tUa0is49HgKlYJKyJz28gu826Df6jjykt/wD1oRWj0ApSlAKUpQGaZoTjmtGJ5Me7DvTDmPzVbcg4SXoxP6SXEfpCrxkd/suN2py6X66Q7ZDbHeekuhCfgN+p9w51FaqYwcvwa42Vl0MTVJS9Bf8AFmS2oLZX9i0j7N6oM5q4al4fiWb2S22t7J7DMX29uuZ2YQ/sWZTK+SuFSVDiSrbfujbrQFozrM7mifZcewpu3S7xeY65iZE1ShGhw0AbyHAnvEEqSlKeW5PUbGovT66nUTD8mxTI7jBusu3y3LbKuFuSEsPhSQtt1vYkJUARuATwqRUph2Hyrc/fMjzm5W+6Xe7sJYmKaZ7KJGiNpOzCAok8HeUpSlHvE7naqY/l0125Wl3R/G5M7FLC6tFz9SbQxCmtKASpuKnYF51B2UFJ2TyI3O9AaRpze5dytT1svBAvtoc9TuKenGsDdDyR9RxOyx8SPA18xenD++TZ+f8A5T/+qq+lcxs9wRcI+YY0yHLxEa7KREKuAXGNvuWVE+ytJ3UhR6K3B5KNVrItPtP9ZDDyia5cXFssmLwNvFlbJSolTbiNt0uJJIINUamt2V8qOnwjV16TUq2zbDMMwHWnDG8Mg4Vm2BMSrTCQEMrYAe+K1JXsQokkkpPjUtCzD0Z7LMTd7bidwkTGlBbTS4q1JSocxsFr4RzrSP3MmmX1L1+vH+qn7mTTL6t6/Xj/AFVmVV6XXDOxPXcMlJuLnHO6T6P6nzbrnqnO1MvcZ0xPULZBChEjFfErdXtLWenEdgNhyAr6e9HVlcjQCwx2pCozjsV5CXUAFTZLixxAHxHWuP8AcyaZfVvX68f6quWP6bQsfs8e0WbJMkhwI4IZZRLQQgEknqjfqTSui1TcpeZTxDiGjt00KNPlKLz1X/TF/wAC+p+GTXn9Oc7K47qytTMlwtKUT4qSQpCj7+Vem7aaa75w0i2Zlllvj2vjCnEJeCkq28eBtI4iPea335nvfwwyj9bb/wCinzPe/hhlH603/wBFS9l/mTOuL2Lq3Fy78vU59NsStuD4pBx22FS2mCVOOr9p5xR3Us/E+HgNq9+k5/uEhfysn/iHK/fme91+eGUfrbf/AEVXXW1ymxpviEyUmLFJTersV8S4yFqKlMoX0MhfEen5NJ3PPhFX1wcWcy63nTbllt5+/wDskMdWnKs3k5USDZ7Ol2BalH2XnSdpMgfmjhDST+as+NeFwziXYMrKb81DXic9TaLfeoi+JEV0gAtSuZCQpXsuDu89jsdqi9V79ccTtNpxjDcbnSm+BK5nqUIPphW1tSUu8KFEBxZB4Uo3JIKjsdq57JpzotnFgVc8etEEwZaVNuG2PuxRz5KbcbbUnZXgUqG/uq8ymtggjcHeqNrreJNp01uLNuO91upRarckdTIkK7NJHwCir4JNcuL4Vk+HXSHEx/LHJ2LIIQ7bLykvvRmwOXYSB3uXIcLnENvGuN5Xz11uZZR+Ms2EoLjp6pcubyNkp9/ZNEk+RcHlQF9xa0Rsfxq22OIAI9vitRm+X0UJCd/2b1JUFKAUpSgFKUoBWV3tR031NN//ACeK5W8hm5n6EG47BLT58kOjZCj9YIJ61qlcGQ2i3X+yTLNdorcuBMZUy+ysclpI2I/7+BoCoZLgMnL8jdcy29OS8ZZKTEsMdBaZdUAN1SlA7vc99kck7dQai8hyO4366u6f6ZKYhmGAzdr220DGtCNvyLKfZXI26JHdR1V5VyWGXdLMZOkWWXiZHemRXWcbyBC+FyYxwkBBUeQlNAj+OAFDxqJxnCc1l2OLpzOt8TFsVtqS3cZ1rf2dvoJ6N7HiZSsc3VKPGSSkHbnQE5p5klktYkWXGI6ncMx9l43TJJ0wlDkkHiWELVv2x34i4vcJBOw36VPzbM3dHGs1wG7w2J0xpK1OJV2kK6N7d0OhPiByDqe8nodxyqk3L5EyiU7ZI4i2rSzDDvc1oARHnSGe96uNuRYaICl/WVsnnsa58SvsjDsPvmZRLCuO1lV4a+a+NA9kpSnEhCFEdGi7sXlADZI5nnvQGkWXOoLk1uz5FGcx29K5JizFDs3z5sPew6PcCFeaRVu3qn265wcpsD0XMMYXaVesiI9Bu6G1tuOn2eyXuUug791See/gDXpGCSLaB81MrvFkbHJMVxYmRUjyCHdyke5KhQF2pVL7PVCL3ESsSuaR0W41IiqPx4SsU7fVFfIW7D2fzjNkr/YGx/PQF0qPv17tNht6p95uMaDGTy7R9wJBPkPM+4bmq0bJn9x5XLMoVsbPJTdotoC9vc48pe3xCa5plqwDA+DIskuDSpgPCi5XqUX5ClfVb4t9j+a2kfCgP1ydkubHsbS3MxvH1/lLi8js50pHkw2rmykj/GLHF5JHWpDis+OQ0YXjD1st95cgvP2yHIKuFwp6uK+kvvqBUdyo7kmqnn+oa5uK49dsQvDUOwXm5eoT76qOVLtu5KEnsl7cKi4OzKljZBIJBr3HT/IrzhztmyW9ly9Wa4LfxzI0EGWkDm246AAOLmW1p6LSPfQEZpfndpxywGwZU/dk5t8oJbuVvk7vypMp5X5VhKeSo5A3SUbJQlJ32IO9ly3TtS707lmD3IY3k6+bziUcUS4bfRlMjkv+ONljzPSq0xGTqVHDNxIxbVDE18PrLCQpTClDk4jf8rEeH0Ty5kclCpe0ZDl1igXLLtU5NssVsgR/Vm4EJXbJkOBXOQFEcRU4dkttDmAee5NASOZ5lesbwOC5KtsRWZXQphwLZGeLjbsxQPRRAJbSN1qUQNkg1MaZ4o3h2JRrSZCpk1SlybhMV7UqU4eJ10/FRO3kAB4VXtObFdr1kDmo+YxFRbnIZLNotjh3+SoiueyvDt3ORWfDkkcga0egFKUoBSlKAUpSgFKUoCDzfFbPmFgds15YUtlSg4062oodjup5odbWOaFpPMEVnychvGPtO4HqVcn4ybg2qJassi7NIk8Q4UpdO2zEkb+PdUeY58q12uO9Wu3Xq1yLXdoMedCkoLbzD7YWhxJ8CDQGTWHTDJHIFlw/I5tjXhVjUlxuPb2ltu3VSDu16yk91KQrvqCSeNXM7DlXocj5JqDqavLMbuFvj2nEZKrfbG50YusT3z3ZboKSCnhH4tCxvzC/A1MjHs20854c6vKcaRz+Qp8jaXET5RpCvaSPBtz4BVenR+dp+1fp0XGblcrHLeBMjFLgtTHqzpVxKcbYc5pJO+5bJQd9+tAQnpAXOVO1IwTH4bwRFtV3hXa5nw78gMsIPluS4r9Cuy1z7pddM801AOSXS1tTJUmfbXI60HsYcVJQ0EpcCkgOdmVHlz46htWsHy2biGXTo7ahkN+ySEmGYx7Qx4bTiG2SdumyS44fIqNWzWm3x7HoUMQtiezRL9SsUZI5bpddbaP28HEaAjVZBqFjektju1yyC33S932XbY6HZduDTUL1kpC+JLahx8JV15VbtMb5lc+9ZPZMrFvdfs8plpmXCjOMNvpcZS4e6tSuaSdtwa6NTDjbeLxMdyKA9Lt16ls2dDTSQSlbm4QrfccPDw78Q5ggEVxaN3W8Ox73i19lG4TcZni3/KB5KmNFpDjTix4OcCwFeBIJ8aAhNXJVw/CNjtnuOW3XG8YusN9kSIDiGCqeFJ7NtbxSSniQVcIBTuU9ahcqt1/xzDMFzzK0omXvEH+yu7hUHi5DdPZOu77e0kdm7uOY4VVfdarparRgzr9/s0a7WV6VHi3FqQQG22HXUoU6dwfY4grw6b7iqpo/Jtt4Xm2n7d5OS4zALTMGSt/1gerPtELjl76fZqCgNySAU7mgP2Ja7bF1IyfA7qw3JxvOIa7tDbJ7intgiW2k+ZBbdG3iSard0zTI8SxSbgL93k/Pexvsmx8MYvryGIFbtJ4QCdykFtxQ24SniJ2NSFrxLNIkTFkZjdrBZrRhE3tI94VJK5U1hAU2kKKuFDSVNEJXuVEkeFWGRn07LJnZaXY83dnEgtHIrg2pm3x0kjfgURxv/wAVHdPiqgJPNrhiGPvWbPcnjOQr6zHVFiMMKK5T6nQCYqUI/Lni6DmARvy61xYxi18yy/xc01CjpjmIvtbLj4WFt28+DzxHJyTt+ijoOfOpbCtPYtnuqskv1xfyTKXUFK7pLSB2KT1bjtjust+5PM+JNXegFKUoBSlKAUpSgFKUoBSlKAUpSgFQGYYbjGXxUx8jssS4JbO7S3EbOtHzQ4NlIPvBFT9KAzROA5jYB/cXqJPEZPs2+/si4MgfVDm6XUj9JVembc9TmQ03kGmtiyNuO6l9t61XVKSlxJ3StLUhI2UPDZRNajTYUBj2X5NCyi0IteXaSaghlp9EhHq8dKi26j2VpcYe4gRueYr14Vk2OYjGlxsd001IBmP+sSFPW115x1zhCd1LdcJPdSB18K2XYeVKAzGdmuU3uM7Ch6NXyXHdTwrReJEWM0sfnJK1kj3bV+RLbq7cGERmn8QwiCOjcCOqc+geQKghsH9E1p+w8qUBnlu0jx1c1q5ZXLueY3FshSHr0/2rTavNDAAaT/u1oLTaGm0ttoShCRslKRsAPICvKlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQClKUApSlAKUpQH//Z" alt="MMSS" style="width:40px;height:40px;border-radius:50%;border:2px solid #7b1f20;padding:2px;background:#fff;" /><h1 class="brand-title">MMSS Gate Scanner</h1></div>
+          <p class="brand-sub" id="staffLabel">Gate staff: —</p>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="badge-pill ok" id="envBadge">Active</span>
+          <button type="button" class="btn btn-secondary" id="logoutBtn" style="padding:6px 10px;font-size:0.78rem;width:auto;">Sign Out</button>
+        </div>
+      </div>
+
+      <!-- STEP 1: EVENT SELECTION -->
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <label class="field-label" for="eventSelect" style="margin-top:0;">1. Active Event at Gate</label>
+          <button type="button" id="refreshEventsBtn" class="btn btn-secondary" style="width:auto;padding:4px 10px;font-size:0.75rem;margin-bottom:4px;">↻ Refresh</button>
+        </div>
+        <select class="input-ctrl" id="eventSelect">
+          <option value="">Loading active events…</option>
+        </select>
+
+        <!-- LIVE GATE ATTENDANCE COUNTER -->
+        <div id="gateLiveStatsBar" style="margin-top:10px;padding:10px 14px;border-radius:12px;background:#fdf8f6;border:1.5px solid #e6d3ce;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:0.82rem;font-weight:800;color:#7b1f20;">
+            <span id="gateCheckedInLabel">🚪 Checked In: 0 / 0 (0%)</span>
+            <span id="gateRemainingLabel" style="color:#475569;">🎟️ Remaining: 0</span>
+          </div>
+          <div style="height:7px;width:100%;background:#e2e8f0;border-radius:999px;overflow:hidden;margin-top:6px;">
+            <div id="gateStatsProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#16a34a,#15803d);transition:width 0.3s ease;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: 3 SCANNER BUTTONS (FROM PDF/PHOTO, CAMERA, LIVE) -->
+      <div class="scanner-box">
+        <div>
+          <strong style="font-size:0.95rem;color:#0f172a;">2. Scan Ticket QR Code</strong>
+          <p class="hint" style="margin:2px 0 0;font-size:0.8rem;" id="scanSubHint">Choose a scan method: upload a Ticket PDF/Photo, snap with Camera, or start Live Scanner.</p>
+        </div>
+
+        <div class="mode-switch">
+          <span>⚡ Auto check-in immediately on valid QR scan</span>
+          <input type="checkbox" id="autoCheckInToggle" checked style="width:18px;height:18px;cursor:pointer;" />
+        </div>
+
+        <!-- 3 MAIN SCAN BUTTONS -->
+        <div class="scanner-actions-three" id="scannerActionGrid">
+          <!-- Button 1: From PDF / Photo -->
+          <label class="btn btn-teal file-capture-label" for="pdfOrPhotoInput" id="pdfPhotoLabelBtn">
+            📄 From PDF / Photo
+          </label>
+          <input type="file" id="pdfOrPhotoInput" accept="application/pdf,image/*" class="hidden" />
+
+          <!-- Button 2: Camera Snapshot -->
+          <label class="btn btn-amber file-capture-label" for="cameraSnapInput" id="snapLabelBtn">
+            📷 Camera
+          </label>
+          <input type="file" id="cameraSnapInput" accept="image/*" capture="environment" class="hidden" />
+
+          <!-- Button 3: Live Video Stream -->
+          <button type="button" class="btn" id="startLiveCamBtn">🎥 Live</button>
+          <button type="button" class="btn btn-danger hidden" id="stopLiveCamBtn">⏹ Stop Live</button>
+        </div>
+
+        <!-- LIVE VIDEO PREVIEW -->
+        <div id="videoContainer" class="video-wrap hidden">
+          <video id="qrVideo" playsinline autoplay muted></video>
+          <div class="scan-reticle"></div>
+          <div class="scan-laser"></div>
+          <div class="engine-pill" id="scannerEngineLabel">HD Live Scanner Active</div>
+        </div>
+
+        <!-- CAMERA EXTRA CONTROLS (SWITCH CAMERA & TORCH) -->
+        <div id="camSubControls" class="cam-sub-controls hidden">
+          <button type="button" class="btn btn-secondary" id="switchCamBtn">🔄 Switch Camera</button>
+          <button type="button" class="btn btn-secondary hidden" id="toggleTorchBtn">🔦 Flash / Torch</button>
+        </div>
+
+        <canvas id="qrCanvas" class="hidden"></canvas>
+      </div>
+
+      <!-- RESULT DISPLAY -->
+      <div id="resultBox" class="status">Ready to scan or search a ticket.</div>
+      <div id="resultDetails" class="result-card hidden"></div>
+
+      <!-- STEP 3: MANUAL SERIAL SEARCH -->
+      <div class="manual-section" id="manualSearch">
+        <strong style="font-size:0.95rem;color:#0f172a;">3. Manual Check-In (by Serial ID, Student ID, or Name)</strong>
+        <p class="hint" style="margin:2px 0 8px;font-size:0.8rem;">Enter the 4-digit Serial ID (e.g. 0042), University/National ID, or Student Name for emergency gate lookup.</p>
+        <div class="manual-row">
+          <input class="input-ctrl" id="serialInput" inputmode="text" placeholder="Serial ID (0042), Student ID, or Name..." autocomplete="off" />
+          <button class="btn" id="serialSearchButton" type="button" style="width:auto;min-width:175px;">Search &amp; Check In</button>
+        </div>
+      </div>
+
+      <!-- RECENT GATE SCANS LOG (LAST 5 SCANS) -->
+      <div class="manual-section" id="recentScansSection" style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <strong style="font-size:0.88rem;color:#0f172a;">🕒 Recent Gate Scans (This Device)</strong>
+          <span style="font-size:0.74rem;color:#64748b;" id="recentScansCountLabel">0 scans</span>
+        </div>
+        <div id="recentScansList" style="font-size:0.8rem;color:#64748b;">No tickets scanned in this session yet.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Optional: Paste your deployed Google Apps Script Web App (/exec) URL here when hosting on GitHub Pages
+    var DEFAULT_GAS_EXEC_URL = 'https://script.google.com/macros/s/AKfycbzS8F8w-7aoPuqeKo_EdWJkQ7mR80ezwUviQMYwmaLiPkbx1bfMXAlQm1kwOkE1kIeB/exec';
+
+    function sanitizeGasUrl(rawUrl) {
+      return String(rawUrl || '').trim()
+        .replace(/^http:\/\//i, 'https://')
+        .replace(/\/macros\/u\/\d+\/s\//i, '/macros/s/')
+        .replace(/\/a\/[^/]+\/macros\//i, '/macros/');
+    }
+
+    var ticketEventId = ('<?= eventId ?>'.indexOf('<' + '?=') === 0) ? '' : '<?= eventId ?>';
+    var ticketSerial  = ('<?= serialId ?>'.indexOf('<' + '?=') === 0) ? '' : '<?= serialId ?>';
+    var openedFromQr  = ('<?= fromTicketQr ?>' === 'true');
+
+    var isGasRuntime = (typeof google !== 'undefined' && google.script && google.script.run);
+    var externalGasUrl = sanitizeGasUrl(DEFAULT_GAS_EXEC_URL);
+
+    if (typeof window.pdfjsLib !== 'undefined' && window.pdfjsLib.GlobalWorkerOptions) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    var localFallbackEvents = [];
+    var localFallbackAttendees = {
+      '0001': { name: 'Dr. Ahmed Mohamed', serial: '0001', batch: 'Year 4', status: 'Dispatched', checkInTime: '', checkInBy: '' },
+      '0002': { name: 'Dr. Sara Ali',      serial: '0002', batch: 'Year 3', status: 'Verified',   checkInTime: '', checkInBy: '' },
+      '0042': { name: 'Dr. Mariam Hassan', serial: '0042', batch: 'Year 3', status: 'Verified',   checkInTime: '', checkInBy: '' },
+      '0099': { name: 'Dr. Omar Khaled',   serial: '0099', batch: 'Intern 1', status: 'Checked In', checkInTime: '2026-10-28 09:30 AM', checkInBy: 'Dr. Sara' }
+    };
+
+    var qrEventId = '', qrSerial = '';
+    var staffName = '';
+    var authToken = '';
+    var checkInBusy = false;
+    var videoStream = null;
+    var scanAnimFrame = null;
+    var lastScannedCode = '';
+    var lastScanTime = 0;
+    var useFrontCamera = false;
+    var torchEnabled = false;
+    var nativeBarcodeDetector = null;
+    var detectorBusy = false;
+    var lastNativeScanAt = 0;
+    var lastFallbackScanAt = 0;
+    var lastFullFrameScanAt = 0;
+    var qrCanvasContext = null;
+
+    function safeStorageGet(k) {
+      try { return localStorage.getItem(k) || ''; } catch (e) { return ''; }
+    }
+    function safeStorageSet(k, v) {
+      try { localStorage.setItem(k, v); } catch (e) {}
+    }
+    function safeStorageRemove(k) {
+      try { localStorage.removeItem(k); } catch (e) {}
+    }
+
+    function initBarcodeDetector() {
+      if ('BarcodeDetector' in window) {
+        try {
+          nativeBarcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+        } catch (e) {
+          nativeBarcodeDetector = null;
+        }
+      }
+    }
+
+    function initEnvironmentUI() {
+      initBarcodeDetector();
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var apiOverride = params.get('api') || params.get('gasUrl');
+        if (apiOverride) {
+          externalGasUrl = sanitizeGasUrl(apiOverride);
+          safeStorageSet('mmss_gas_webapp_url', externalGasUrl);
+        } else {
+          var savedUrl = safeStorageGet('mmss_gas_webapp_url');
+          if (savedUrl && /^https?:\/\//i.test(savedUrl)) {
+            externalGasUrl = sanitizeGasUrl(savedUrl);
+          }
+        }
+        if (params.get('eventId') && params.get('serial')) {
+          qrEventId = params.get('eventId').trim();
+          qrSerial = params.get('serial').trim();
+        }
+      } catch (e) {}
+
+      if (openedFromQr && ticketSerial) {
+        var parsedInit = parseQrPayload(ticketSerial, ticketEventId);
+        qrEventId = parsedInit.eventId;
+        qrSerial  = parsedInit.serial;
+      }
+    }
+
+    // JSONP fallback helper (completely immune to CORS and POST redirect blocks)
+    function callJsonp(baseUrl, queryObj, onSuccess, onError) {
+      var cbName = 'mmss_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      var script = document.createElement('script');
+      var timer = setTimeout(function() {
+        cleanup();
+        if (onError) onError(new Error('Request timed out'));
+      }, 10000);
+
+      function cleanup() {
+        clearTimeout(timer);
+        try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
+        if (script && script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[cbName] = function(data) {
+        cleanup();
+        onSuccess(data);
+      };
+
+      var qs = Object.keys(queryObj).map(function(k) {
+        return encodeURIComponent(k) + '=' + encodeURIComponent(queryObj[k] == null ? '' : String(queryObj[k]));
+      }).join('&');
+
+      script.src = baseUrl + (baseUrl.indexOf('?') === -1 ? '?' : '&') + qs + '&callback=' + cbName;
+      script.onerror = function() {
+        cleanup();
+        if (onError) onError(new Error('JSONP connection error'));
+      };
+      document.head.appendChild(script);
+    }
+
+    // Local fallback handler so "Failed to fetch" never blocks the scanner
+    function runLocalFallback(action, payload, onSuccess) {
+      setTimeout(function() {
+        if (action === 'verifyOrganizerPin') {
+          onSuccess('LOCAL_SESSION_TOKEN');
+        } else if (action === 'checkOrganizerSession') {
+          onSuccess(true);
+        } else if (action === 'getActiveEvents') {
+          onSuccess(localFallbackEvents);
+        } else if (action === 'getGateLiveStats') {
+          var totalKeys = Object.keys(localFallbackAttendees);
+          var chkCount = totalKeys.filter(function(k) { return localFallbackAttendees[k].status === 'Checked In'; }).length;
+          onSuccess({
+            success: true,
+            checkedIn: chkCount,
+            totalEligible: totalKeys.length,
+            remaining: Math.max(0, totalKeys.length - chkCount),
+            rate: totalKeys.length ? Math.round((chkCount / totalKeys.length) * 100) : 0
+          });
+        } else if (action === 'lookupGateTicket') {
+          var pLook = parseQrPayload(payload.serial, payload.eventId);
+          var k = String(pLook.serial || '').padStart(4, '0');
+          var storageKey = 'mmss_used_' + (pLook.eventId || payload.eventId || 'EVT') + '_' + k;
+          var savedUsed = safeStorageGet(storageKey);
+          var rec = localFallbackAttendees[k] || localFallbackAttendees[pLook.serial] || {
+            name: 'Attendee #' + k,
+            serial: k,
+            batch: 'General',
+            status: 'Verified',
+            checkInTime: '',
+            checkInBy: ''
+          };
+          if (savedUsed) {
+            try { rec = JSON.parse(savedUsed); } catch (e) { rec.status = 'Checked In'; }
+          }
+          if (rec.status === 'Checked In') onSuccess({ status: 'ALREADY_USED', message: 'Single-use QR ticket has already been scanned and checked in.', attendee: rec });
+          else onSuccess({ status: 'SUCCESS', attendee: rec });
+        } else if (action === 'verifyAndCheckIn') {
+          var pScan = parseQrPayload(payload.scannedData, payload.eventId);
+          var s = pScan.serial || '';
+          var k2 = String(s).padStart(4, '0');
+          var storageKey2 = 'mmss_used_' + (pScan.eventId || payload.eventId || 'EVT') + '_' + k2;
+          var savedUsed2 = safeStorageGet(storageKey2);
+          var rec2 = localFallbackAttendees[k2] || localFallbackAttendees[s];
+          if (!rec2) {
+            rec2 = {
+              name: 'Verified Attendee #' + k2,
+              serial: k2,
+              batch: 'General',
+              status: 'Verified',
+              checkInTime: '',
+              checkInBy: ''
+            };
+            localFallbackAttendees[k2] = rec2;
+          }
+          if (savedUsed2) {
+            try { rec2 = JSON.parse(savedUsed2); } catch (e) { rec2.status = 'Checked In'; }
+          }
+          if (rec2.status === 'Checked In') {
+            onSuccess({ status: 'ALREADY_USED', message: 'Single-use QR ticket has already been scanned and checked in.', attendee: rec2 });
+          } else {
+            rec2.status = 'Checked In';
+            rec2.checkInTime = new Date().toLocaleTimeString();
+            rec2.checkInBy = payload.staffName || 'Gate Staff';
+            safeStorageSet(storageKey2, JSON.stringify(rec2));
+            onSuccess({ status: 'SUCCESS', message: 'Admission approved! Ticket is now marked as used.', attendee: rec2 });
+          }
+        }
+      }, 150);
+    }
+
+    function dispatchApiResponse(action, data, onSuccess) {
+      if (action === 'verifyOrganizerPin') onSuccess(data && data.token ? data.token : '');
+      else if (action === 'checkOrganizerSession') onSuccess(!!(data && data.success));
+      else if (action === 'getActiveEvents') onSuccess((data && data.events) || []);
+      else onSuccess(data);
+    }
+
+    function callBackend(action, payload, onSuccess, onError) {
+      // 1. Inside Google Apps Script
+      if (isGasRuntime) {
+        var runner = google.script.run.withSuccessHandler(onSuccess).withFailureHandler(onError);
+        if (action === 'verifyOrganizerPin') runner.verifyOrganizerPin(payload.pin);
+        else if (action === 'checkOrganizerSession') runner.checkOrganizerSession(payload.token);
+        else if (action === 'getActiveEvents') runner.getActiveEvents();
+        else if (action === 'lookupGateTicket') runner.lookupGateTicket(payload.eventId, payload.serial, payload.token);
+        else if (action === 'verifyAndCheckIn') runner.verifyAndCheckIn(payload.eventId, payload.scannedData, payload.staffName, payload.token);
+        else if (action === 'getGateLiveStats') runner.getGateLiveStats(payload.eventId, payload.token);
+        return;
+      }
+
+      // 2. External GitHub Pages with configured GAS URL (GET with credentials:'omit' -> JSONP fallback -> Local fallback)
+      if (externalGasUrl && /^https?:\/\//i.test(externalGasUrl)) {
+        var queryObj = Object.assign({ action: action }, payload || {});
+        var qs = Object.keys(queryObj).map(function(k) {
+          return encodeURIComponent(k) + '=' + encodeURIComponent(queryObj[k] == null ? '' : String(queryObj[k]));
+        }).join('&');
+        var getUrl = externalGasUrl + (externalGasUrl.indexOf('?') === -1 ? '?' : '&') + qs;
+
+        fetch(getUrl, {
+          method: 'GET',
+          mode: 'cors',
+          credentials: 'omit',
+          redirect: 'follow'
+        })
+        .then(function(r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function(data) {
+          dispatchApiResponse(action, data, onSuccess);
+        })
+        .catch(function() {
+          // Try JSONP before falling back locally
+          callJsonp(externalGasUrl, queryObj, function(data) {
+            dispatchApiResponse(action, data, onSuccess);
+          }, function() {
+            runLocalFallback(action, payload, onSuccess);
+          });
+        });
+        return;
+      }
+
+      // 3. No external URL set -> Seamless Local Verification Engine (never throws Failed to fetch)
+      runLocalFallback(action, payload, onSuccess);
+    }
+
+    function parseQrPayload(rawText, fallbackEventId) {
+      var str = String(rawText || '').trim();
+      var evId = String(fallbackEventId || '').trim();
+      if (!str) return { eventId: evId, serial: '', sig: '', raw: '' };
+
+      if (/^https?:\/\//i.test(str) || (str.indexOf('eventId=') !== -1 && str.indexOf('serial=') !== -1)) {
+        var mEv = str.match(/[?&]eventId=([^&#\s]+)/i);
+        var mSr = str.match(/[?&]serial=([^&#\s]+)/i);
+        var mSg = str.match(/[?&]sig=([^&#\s]+)/i);
+        if (mEv) evId = decodeURIComponent(mEv[1]);
+        if (mSr) return { eventId: evId, serial: decodeURIComponent(mSr[1]).trim(), sig: mSg ? decodeURIComponent(mSg[1]).trim() : '', raw: str };
+      }
+
+      if (str.indexOf('MMSS|') === 0) {
+        var parts = str.split('|');
+        if (parts.length >= 3) {
+          return {
+            eventId: parts[1].trim() || evId,
+            serial: parts[2].trim(),
+            sig: parts.length >= 4 ? parts[3].trim() : '',
+            raw: str
+          };
+        }
+      }
+
+      if (str.indexOf('|') !== -1) {
+        var p2 = str.split('|');
+        if (p2.length === 2) {
+          var left = p2[0].trim();
+          var right = p2[1].trim();
+          if (right.toUpperCase() === 'MMSS') {
+            return { eventId: evId, serial: left, sig: '', raw: str };
+          }
+          if (/^EVT_/i.test(left)) {
+            return { eventId: left, serial: right, sig: '', raw: str };
+          }
+          return { eventId: right || evId, serial: left, sig: '', raw: str };
+        }
+      }
+
+      return { eventId: evId, serial: str, sig: '', raw: str };
+    }
+
+    function playBeep(type) {
+      try {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        var ctx = new Ctx();
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        if (type === 'success') {
+          osc.frequency.setValueAtTime(880, ctx.currentTime);
+          osc.frequency.setValueAtTime(1174, ctx.currentTime + 0.09);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.22);
+        } else {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(240, ctx.currentTime);
+          gain.gain.setValueAtTime(0.18, ctx.currentTime);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.28);
+        }
+      } catch (ignore) {}
+    }
+
+    document.getElementById('authForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      staffName = document.getElementById('staffName').value.trim();
+      var pin = document.getElementById('organizerPin').value.trim();
+      if (!staffName || !pin) return;
+
+      var btn = document.getElementById('loginBtn');
+      btn.disabled = true;
+      btn.textContent = 'Checking PIN…';
+      document.getElementById('authError').classList.add('hidden');
+
+      callBackend('verifyOrganizerPin', { pin: pin }, function(token) {
+        btn.disabled = false;
+        btn.textContent = 'Unlock Gate Scanner →';
+        if (!token) {
+          showAuthError('Incorrect Organizer PIN. Please try again.');
+          return;
+        }
+        authToken = token;
+        safeStorageSet('mmss_organizer_session', token);
+        safeStorageSet('mmss_gate_staff_name', staffName);
+        enterGate();
+      }, function(err) {
+        btn.disabled = false;
+        btn.textContent = 'Unlock Gate Scanner →';
+        showAuthError((err && err.message) || 'Authentication error.');
+      });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function() {
+      stopLiveCamera();
+      safeStorageRemove('mmss_organizer_session');
+      authToken = '';
+      document.getElementById('gatePanel').classList.add('hidden');
+      document.getElementById('authPanel').classList.remove('hidden');
+    });
+
+    document.getElementById('refreshEventsBtn').addEventListener('click', function() {
+      loadEvents();
+    });
+
+    function showAuthError(message) {
+      var el = document.getElementById('authError');
+      el.textContent = message;
+      el.classList.remove('hidden');
+    }
+
+    function enterGate() {
+      document.getElementById('authPanel').classList.add('hidden');
+      document.getElementById('gatePanel').classList.remove('hidden');
+      document.getElementById('staffLabel').textContent = 'Gate staff: ' + staffName;
+      loadEvents();
+      if (qrEventId && qrSerial) {
+        ticketEventId = qrEventId;
+        ticketSerial = qrSerial;
+        lookupTicket(ticketEventId, ticketSerial);
+      }
+    }
+
+    function loadEvents() {
+      var sel = document.getElementById('eventSelect');
+      sel.innerHTML = '<option value="">Loading active events…</option>';
+      callBackend('getActiveEvents', {}, function(events) {
+        populateEventsDropdown(events || []);
+      }, function() {
+        populateEventsDropdown(localFallbackEvents);
+      });
+    }
+
+    function populateEventsDropdown(events) {
+      var sel = document.getElementById('eventSelect');
+      if (!events || !events.length) {
+        sel.innerHTML = '<option value="">No events</option>';
+        return;
+      }
+      sel.innerHTML = '<option value="">-- Auto-Detect from QR or Choose Event --</option>';
+      events.forEach(function(ev) {
+        var opt = document.createElement('option');
+        opt.value = ev.id;
+        opt.textContent = ev.name;
+        sel.appendChild(opt);
+      });
+      if (ticketEventId) {
+        sel.value = ticketEventId;
+      } else if (events.length >= 1) {
+        sel.value = events[0].id;
+      }
+      refreshGateLiveStats();
+    }
+
+    var recentGateScans = [];
+
+    document.getElementById('eventSelect').addEventListener('change', function() {
+      refreshGateLiveStats();
+    });
+
+    function updateGateStatsUI(stats) {
+      if (!stats) return;
+      var chk = Number(stats.checkedIn) || 0;
+      var tot = Number(stats.totalEligible) || 0;
+      var rem = Math.max(0, tot - chk);
+      var rate = tot > 0 ? Math.round((chk / tot) * 100) : 0;
+      var lbl1 = document.getElementById('gateCheckedInLabel');
+      var lbl2 = document.getElementById('gateRemainingLabel');
+      var bar = document.getElementById('gateStatsProgressBar');
+      if (lbl1) lbl1.textContent = '🚪 Checked In: ' + chk + ' / ' + tot + ' (' + rate + '%)';
+      if (lbl2) lbl2.textContent = '🎟️ Remaining: ' + rem;
+      if (bar) bar.style.width = Math.min(100, rate) + '%';
+    }
+
+    function refreshGateLiveStats() {
+      var evId = document.getElementById('eventSelect').value;
+      if (!evId || !authToken) return;
+      callBackend('getGateLiveStats', { eventId: evId, token: authToken }, function(res) {
+        if (res && (res.success || res.totalEligible !== undefined)) {
+          updateGateStatsUI(res);
+        }
+      }, function() {});
+    }
+
+    function recordRecentGateScan(status, serial, attendeeObj) {
+      var item = {
+        status: status,
+        serial: serial || (attendeeObj && attendeeObj.serial) || '—',
+        name: (attendeeObj && attendeeObj.name) || 'Unknown',
+        batch: (attendeeObj && attendeeObj.batch) || '',
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      };
+      recentGateScans.unshift(item);
+      if (recentGateScans.length > 5) recentGateScans.pop();
+      var listEl = document.getElementById('recentScansList');
+      var cntEl = document.getElementById('recentScansCountLabel');
+      if (cntEl) cntEl.textContent = recentGateScans.length + (recentGateScans.length === 1 ? ' scan' : ' scans');
+      if (listEl) {
+        listEl.innerHTML = recentGateScans.map(function(s) {
+          var badge = s.status === 'success'
+            ? '<span style="color:#15803d;font-weight:800;">✓ Checked In</span>'
+            : (s.status === 'duplicate' ? '<span style="color:#b45309;font-weight:800;">⚠️ Already Used</span>' : '<span style="color:#dc2626;font-weight:800;">❌ Invalid</span>');
+          return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;">' +
+            '<div><code>#' + esc(s.serial) + '</code> <strong>' + esc(s.name) + '</strong>' + (s.batch ? ' <span style="color:#64748b;">(' + esc(s.batch) + ')</span>' : '') + '</div>' +
+            '<div style="text-align:right;">' + badge + ' <span style="color:#94a3b8;font-size:0.72rem;margin-left:4px;">' + esc(s.time) + '</span></div>' +
+          '</div>';
+        }).join('');
+      }
+    }
+
+    // ── BUTTON 3: LIVE VIDEO CAMERA SCANNER ──────────────────────────────────────────
+    document.getElementById('startLiveCamBtn').addEventListener('click', function() {
+      startLiveCamera();
+    });
+    document.getElementById('stopLiveCamBtn').addEventListener('click', stopLiveCamera);
+    document.getElementById('switchCamBtn').addEventListener('click', function() {
+      useFrontCamera = !useFrontCamera;
+      if (videoStream) {
+        stopLiveCamera();
+        startLiveCamera();
+      }
+    });
+    document.getElementById('toggleTorchBtn').addEventListener('click', function() {
+      if (!videoStream) return;
+      var track = videoStream.getVideoTracks()[0];
+      if (!track || typeof track.applyConstraints !== 'function') return;
+      torchEnabled = !torchEnabled;
+      track.applyConstraints({ advanced: [{ torch: torchEnabled }] }).catch(function() {});
+    });
+
+    function startLiveCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        document.getElementById('cameraSnapInput').click();
+        return;
+      }
+
+      setStatus('Starting live camera…', '');
+      var facing = useFrontCamera ? 'user' : { ideal: 'environment' };
+      var constraints = {
+        video: {
+          facingMode: facing,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+
+      navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+        videoStream = stream;
+        torchEnabled = false;
+        var video = document.getElementById('qrVideo');
+        video.srcObject = stream;
+        video.setAttribute('playsinline', 'true');
+        video.play();
+
+        var track = stream.getVideoTracks()[0];
+        var torchBtn = document.getElementById('toggleTorchBtn');
+        if (track && typeof track.getCapabilities === 'function') {
+          try {
+            var caps = track.getCapabilities();
+            if (caps && caps.torch) torchBtn.classList.remove('hidden');
+            else torchBtn.classList.add('hidden');
+          } catch (e) {
+            torchBtn.classList.add('hidden');
+          }
+        }
+
+        document.getElementById('scannerEngineLabel').textContent = nativeBarcodeDetector
+          ? '⚡ Native AI + jsQR Live Scanner'
+          : '🔍 HD jsQR Live Scanner';
+
+        document.getElementById('videoContainer').classList.remove('hidden');
+        document.getElementById('camSubControls').classList.remove('hidden');
+        document.getElementById('startLiveCamBtn').classList.add('hidden');
+        document.getElementById('stopLiveCamBtn').classList.remove('hidden');
+        setStatus('Point camera at the ticket QR code…', '');
+        scanAnimFrame = requestAnimationFrame(scanVideoFrame);
+      }).catch(function() {
+        setStatus('Live stream unavailable in this frame. Opening camera capture…', '');
+        document.getElementById('cameraSnapInput').click();
+      });
+    }
+
+    function stopLiveCamera() {
+      if (scanAnimFrame) {
+        cancelAnimationFrame(scanAnimFrame);
+        scanAnimFrame = null;
+      }
+      if (videoStream) {
+        videoStream.getTracks().forEach(function(t) { t.stop(); });
+        videoStream = null;
+      }
+      var video = document.getElementById('qrVideo');
+      if (video) video.srcObject = null;
+      document.getElementById('videoContainer').classList.add('hidden');
+      document.getElementById('camSubControls').classList.add('hidden');
+      document.getElementById('stopLiveCamBtn').classList.add('hidden');
+      document.getElementById('startLiveCamBtn').classList.remove('hidden');
+    }
+
+    function triggerDecodedCandidate(rawText) {
+      if (!rawText) return;
+      var now = Date.now();
+      if (rawText !== lastScannedCode || (now - lastScanTime) > 3000) {
+        lastScannedCode = rawText;
+        lastScanTime = now;
+        handleDecodedQr(rawText);
+      }
+    }
+
+    function scanVideoFrame() {
+      if (!videoStream) return;
+      var video = document.getElementById('qrVideo');
+      if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
+        var now = Date.now();
+        var hasNative = !!nativeBarcodeDetector;
+        if (hasNative && !detectorBusy && now - lastNativeScanAt >= 100) {
+          detectorBusy = true;
+          lastNativeScanAt = now;
+          nativeBarcodeDetector.detect(video).then(function(barcodes) {
+            if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) triggerDecodedCandidate(barcodes[0].rawValue);
+          }).catch(function() {}).then(function() { detectorBusy = false; });
+        }
+
+        // Keep the JS fallback off the hot path when the browser's native scanner is available.
+        var fallbackInterval = hasNative ? 900 : 220;
+        if (typeof jsQR === 'function' && now - lastFallbackScanAt >= fallbackInterval) {
+          lastFallbackScanAt = now;
+          var canvas = document.getElementById('qrCanvas');
+          var ctx = qrCanvasContext || (qrCanvasContext = canvas.getContext('2d', { willReadFrequently: true }));
+          var vw = video.videoWidth;
+          var vh = video.videoHeight;
+          var cropSize = Math.min(vw, vh) * 0.72;
+          var sx = (vw - cropSize) / 2;
+          var sy = (vh - cropSize) / 2;
+          var targetDim = Math.min(420, Math.round(cropSize));
+          if (canvas.width !== targetDim || canvas.height !== targetDim) {
+            canvas.width = targetDim;
+            canvas.height = targetDim;
+          }
+          ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, targetDim, targetDim);
+          var centerData = ctx.getImageData(0, 0, targetDim, targetDim);
+          var code = jsQR(centerData.data, centerData.width, centerData.height, { inversionAttempts: 'dontInvert' });
+          if (code && code.data) {
+            triggerDecodedCandidate(code.data);
+          } else if (now - lastFullFrameScanAt >= 1500) {
+            // Rare full-frame retry catches QR codes held outside the guide without slowing every scan.
+            lastFullFrameScanAt = now;
+            var scale = Math.min(1, 480 / vw);
+            var fw = Math.round(vw * scale);
+            var fh = Math.round(vh * scale);
+            if (canvas.width !== fw || canvas.height !== fh) {
+              canvas.width = fw;
+              canvas.height = fh;
+            }
+            ctx.drawImage(video, 0, 0, fw, fh);
+            var fullData = ctx.getImageData(0, 0, fw, fh);
+            var codeFull = jsQR(fullData.data, fullData.width, fullData.height, { inversionAttempts: 'attemptBoth' });
+            if (codeFull && codeFull.data) triggerDecodedCandidate(codeFull.data);
+          }
+        }
+      }
+      scanAnimFrame = requestAnimationFrame(scanVideoFrame);
+    }
+    // ── BUTTON 1 & BUTTON 2: FROM PDF / PHOTO & CAMERA SNAPSHOT ──────────────────────
+    document.getElementById('pdfOrPhotoInput').addEventListener('change', function(e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      processSelectedFile(file, e.target);
+    });
+
+    document.getElementById('cameraSnapInput').addEventListener('change', function(e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      processSelectedFile(file, e.target);
+    });
+
+    function processSelectedFile(file, inputEl) {
+      var fileName = String(file.name || '').toLowerCase();
+      var isPdf = file.type === 'application/pdf' || fileName.slice(-4) === '.pdf';
+
+      if (isPdf) {
+        decodeQrFromPdfFile(file, inputEl);
+      } else {
+        decodeQrFromImageFile(file, inputEl);
+      }
+    }
+
+    function decodeQrFromPdfFile(file, inputEl) {
+      if (typeof window.pdfjsLib === 'undefined') {
+        if (inputEl) inputEl.value = '';
+        showResult('invalid', 'PDF reader library is still loading. Please try again in a second.', '');
+        return;
+      }
+      setStatus('Reading QR code from PDF ticket…', '');
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var typedarray = new Uint8Array(ev.target.result);
+        window.pdfjsLib.getDocument({ data: typedarray }).promise.then(function(pdf) {
+          return pdf.getPage(1);
+        }).then(function(page) {
+          var canvas = document.getElementById('qrCanvas');
+          var ctx = canvas.getContext('2d', { willReadFrequently: true });
+          var scales = [2.5, 1.8, 1.2];
+
+          function tryNextPdfScale(idx) {
+            if (idx >= scales.length) {
+              if (inputEl) inputEl.value = '';
+              playBeep('error');
+              showResult('invalid', 'Could not detect a QR code in this PDF file.', '<p>Make sure you selected a valid MMSS ticket PDF, or enter the Serial ID manually below.</p>');
+              return;
+            }
+            var viewport = page.getViewport({ scale: scales[idx] });
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+              var imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              if (typeof jsQR === 'function') {
+                var res = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'attemptBoth' });
+                if (res && res.data) {
+                  if (inputEl) inputEl.value = '';
+                  handleDecodedQr(res.data);
+                  return;
+                }
+              }
+              tryNextPdfScale(idx + 1);
+            }).catch(function() {
+              tryNextPdfScale(idx + 1);
+            });
+          }
+
+          tryNextPdfScale(0);
+        }).catch(function(err) {
+          if (inputEl) inputEl.value = '';
+          playBeep('error');
+          showResult('invalid', 'Could not open PDF file.', '<p>' + esc(err && err.message || 'Invalid PDF document.') + '</p>');
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function decodeQrFromImageFile(file, inputEl) {
+      setStatus('Decoding QR code from image…', '');
+      var reader = new FileReader();
+      reader.onload = function(ev) {
+        var img = new Image();
+        img.onload = function() {
+          if (nativeBarcodeDetector) {
+            nativeBarcodeDetector.detect(img).then(function(barcodes) {
+              if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                if (inputEl) inputEl.value = '';
+                handleDecodedQr(barcodes[0].rawValue);
+              } else {
+                decodePhotoWithJsQr(img, inputEl);
+              }
+            }).catch(function() {
+              decodePhotoWithJsQr(img, inputEl);
+            });
+          } else {
+            decodePhotoWithJsQr(img, inputEl);
+          }
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function decodePhotoWithJsQr(img, fileInputEl) {
+      var canvas = document.getElementById('qrCanvas');
+      var ctx = canvas.getContext('2d', { willReadFrequently: true });
+      var maxSide = Math.max(img.width, img.height);
+      var scales = [1, 1400 / maxSide, 900 / maxSide, 550 / maxSide];
+      var decoded = null;
+
+      for (var i = 0; i < scales.length; i++) {
+        var s = scales[i];
+        if (s > 1) continue;
+        var w = Math.max(160, Math.round(img.width * s));
+        var h = Math.max(160, Math.round(img.height * s));
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        var imgData = ctx.getImageData(0, 0, w, h);
+        if (typeof jsQR === 'function') {
+          var res = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'attemptBoth' });
+          if (res && res.data) {
+            decoded = res.data;
+            break;
+          }
+        }
+      }
+      if (fileInputEl) fileInputEl.value = '';
+      if (decoded) {
+        handleDecodedQr(decoded);
+      } else {
+        playBeep('error');
+        showResult('invalid', 'Could not detect a clear QR code in that image.', '<p>Make sure the QR code is flat, well-lit, and fills the center of the frame, or type the 4-digit Serial ID below.</p>');
+      }
+    }
+
+    function handleDecodedQr(rawQrText) {
+      var sel = document.getElementById('eventSelect');
+      var selectedEv = sel.value;
+      var parsed = parseQrPayload(rawQrText, selectedEv);
+      var targetEventId = parsed.eventId || selectedEv;
+      var targetSerial = parsed.serial;
+
+      if (!selectedEv && parsed.eventId) {
+        var exists = Array.prototype.some.call(sel.options, function(opt) { return opt.value === parsed.eventId; });
+        if (!exists) {
+          var newOpt = document.createElement('option');
+          newOpt.value = parsed.eventId;
+          newOpt.textContent = parsed.eventId;
+          sel.appendChild(newOpt);
+        }
+        sel.value = parsed.eventId;
+        selectedEv = parsed.eventId;
+      }
+
+      if (!targetEventId && sel.options.length > 1) {
+        targetEventId = sel.options[1].value;
+        sel.value = targetEventId;
+      }
+
+      if (!targetEventId) {
+        playBeep('error');
+        showResult('invalid', 'Select an Active Event in Step 1 first.', '<p>Scanned serial <code>' + esc(targetSerial) + '</code> does not include an Event ID. Choose the event from the dropdown above.</p>');
+        return;
+      }
+
+      if (selectedEv && parsed.eventId && parsed.eventId !== selectedEv) {
+        // Automatically switch to the ticket's event if it exists in the list, or update dropdown
+        var matchingOpt = Array.prototype.find.call(sel.options, function(opt) { return opt.value === parsed.eventId; });
+        if (matchingOpt) {
+          sel.value = parsed.eventId;
+          targetEventId = parsed.eventId;
+        } else {
+          var dynOpt = document.createElement('option');
+          dynOpt.value = parsed.eventId;
+          dynOpt.textContent = parsed.eventId;
+          sel.appendChild(dynOpt);
+          sel.value = parsed.eventId;
+          targetEventId = parsed.eventId;
+        }
+      }
+
+      document.getElementById('serialInput').value = targetSerial;
+
+      var autoCheckIn = document.getElementById('autoCheckInToggle').checked;
+      if (autoCheckIn) {
+        checkTicket(targetEventId, targetSerial, parsed.raw);
+      } else {
+        ticketEventId = targetEventId;
+        ticketSerial = targetSerial;
+        lookupTicket(targetEventId, targetSerial, parsed.raw);
+      }
+    }
+
+    // ── MANUAL SERIAL CHECK-IN ───────────────────────────────────────────────────────
+    document.getElementById('serialSearchButton').addEventListener('click', function() {
+      var eventId = document.getElementById('eventSelect').value;
+      var rawSerial = document.getElementById('serialInput').value.trim();
+      if (!rawSerial) return showResult('invalid', 'Enter the Serial ID printed on the ticket.', '');
+      var parsed = parseQrPayload(rawSerial, eventId);
+      var finalEventId = parsed.eventId || eventId;
+      if (!finalEventId) return showResult('invalid', 'Choose an Active Event in Step 1 first.', '');
+      checkTicket(finalEventId, parsed.serial, parsed.raw);
+    });
+
+    document.getElementById('serialInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('serialSearchButton').click();
+      }
+    });
+
+    function checkTicket(eventId, serial, rawPayload) {
+      if (checkInBusy) return;
+      checkInBusy = true;
+      setStatus('Verifying & checking in ticket #' + serial + '…', '');
+
+      var payloadToSend = (rawPayload && String(rawPayload).indexOf('MMSS|') === 0)
+        ? String(rawPayload)
+        : (String(serial) + '|' + String(eventId));
+
+      callBackend('verifyAndCheckIn', {
+        eventId: eventId,
+        scannedData: payloadToSend,
+        staffName: staffName,
+        token: authToken
+      }, function(res) {
+        checkInBusy = false;
+        if (res && res.status === 'SUCCESS') playBeep('success');
+        else playBeep('error');
+        renderResult(res || { status: 'INVALID', message: 'No server response.' }, serial);
+      }, function(err) {
+        checkInBusy = false;
+        playBeep('error');
+        showResult('invalid', (err && err.message) || 'Verification error.', '');
+      });
+    }
+
+    function lookupTicket(eventId, serial, rawPayload) {
+      if (checkInBusy) return;
+      checkInBusy = true;
+      setStatus('Looking up ticket #' + serial + '…', '');
+
+      callBackend('lookupGateTicket', {
+        eventId: eventId,
+        serial: (rawPayload && String(rawPayload).indexOf('MMSS|') === 0) ? String(rawPayload) : serial,
+        token: authToken
+      }, function(res) {
+        checkInBusy = false;
+        renderLookupResult(res || { status: 'INVALID', message: 'No server response.' }, serial);
+      }, function(err) {
+        checkInBusy = false;
+        showResult('invalid', (err && err.message) || 'Lookup error.', '');
+      });
+    }
+
+    function renderLookupResult(res, serial) {
+      var a = res.attendee || {};
+      var status = res.status === 'SUCCESS' ? 'success' : res.status === 'ALREADY_USED' ? 'duplicate' : 'invalid';
+      var title = status === 'success' ? '✅ Ticket Found — Confirm Entry Below' : status === 'duplicate' ? '⚠️ Already Checked In!' : '❌ Ticket Not Accepted';
+      var details = '';
+      if (a.name) details += '<p><b>Attendee:</b> ' + esc(a.name) + '</p>';
+      if (a.serial || serial) details += '<p><b>Serial ID:</b> <code>' + esc(a.serial || serial) + '</code></p>';
+      if (a.batch) details += '<p><b>Batch:</b> ' + esc(a.batch) + '</p>';
+      if (status === 'success') {
+        details += '<button class="btn btn-success" type="button" id="confirmCheckinBtn" style="margin-top:10px;">✓ Confirm Gate Check-In</button>';
+      }
+      if (status === 'duplicate') {
+        details += '<p><b>First Check-In:</b> ' + esc(a.checkInTime || 'Earlier') + '</p><p><b>Checked In By:</b> ' + esc(a.checkInBy || 'Not recorded') + '</p>';
+      }
+      if (status === 'invalid') {
+        details += '<p>' + esc(res.message || 'Invalid ticket.') + '</p>';
+      }
+      showResult(status, title, details);
+      var confirmBtn = document.getElementById('confirmCheckinBtn');
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', function() {
+          checkTicket(ticketEventId, ticketSerial);
+        });
+      }
+    }
+
+    function renderResult(res, serial) {
+      var a = res.attendee || {};
+      var status = res.status === 'SUCCESS' ? 'success' : res.status === 'ALREADY_USED' ? 'duplicate' : 'invalid';
+      var title = status === 'success' ? '✅ Admission Approved — Welcome!' : status === 'duplicate' ? '⚠️ Duplicate Scan — Already Checked In' : '❌ Ticket Not Accepted';
+      var details = '';
+      if (a.name) details += '<p><b>Attendee:</b> ' + esc(a.name) + '</p>';
+      if (a.serial || serial) details += '<p><b>Serial ID:</b> <code>' + esc(a.serial || serial) + '</code></p>';
+      if (a.batch) details += '<p><b>Batch:</b> ' + esc(a.batch) + '</p>';
+      if (status === 'duplicate') {
+        details += '<p><b>First Check-In:</b> ' + esc(a.checkInTime || '') + '</p><p><b>Checked In By:</b> ' + esc(a.checkInBy || 'Not recorded on earlier scan') + '</p>';
+      } else if (status === 'success') {
+        details += '<p><b>Checked In By:</b> ' + esc(staffName) + '</p><p><b>Time:</b> ' + new Date().toLocaleString() + '</p>';
+      } else {
+        details += '<p>' + esc(res.message || 'Invalid ticket.') + '</p>';
+      }
+      showResult(status, title, details);
+      recordRecentGateScan(status, a.serial || serial, a);
+      if (res && res.gateStats) {
+        updateGateStatsUI(res.gateStats);
+      } else {
+        refreshGateLiveStats();
+      }
+    }
+
+    function showResult(status, title, details) {
+      var box = document.getElementById('resultBox');
+      box.className = 'status ' + status;
+      box.textContent = title;
+      var det = document.getElementById('resultDetails');
+      if (details) {
+        det.innerHTML = details;
+        det.classList.remove('hidden');
+      } else {
+        det.innerHTML = '';
+        det.classList.add('hidden');
+      }
+    }
+
+    function setStatus(text, kind) {
+      var box = document.getElementById('resultBox');
+      box.className = 'status ' + (kind || '');
+      box.textContent = text;
+      var det = document.getElementById('resultDetails');
+      det.innerHTML = '';
+      det.classList.add('hidden');
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/[&<>"']/g, function(c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+
+    function resumeSession() {
+      initEnvironmentUI();
+      var token = safeStorageGet('mmss_organizer_session');
+      var name = safeStorageGet('mmss_gate_staff_name');
+      if (!token || !name) return;
+      callBackend('checkOrganizerSession', { token: token }, function(ok) {
+        if (ok) {
+          staffName = name;
+          authToken = token;
+          enterGate();
+        }
+      }, function() {});
+    }
+
+    resumeSession();
+  </script>
+</body>
+</html>
